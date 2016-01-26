@@ -12,8 +12,8 @@ var extname = path.extname;
 var resolve = path.resolve;
 var parse = path.parse;
 var sep = path.sep;
-var fs = require('mz/fs');
 var co = require('co');
+var fs = require('fs');
 
 /**
  * Expose `send()`.
@@ -66,7 +66,7 @@ function send(ctx, path, opts) {
     if (!hidden && isHidden(root, path)) return;
 
     // serve gzipped file when possible
-    if (encoding === 'gzip' && gzip && (yield fs.exists(path + '.gz'))) {
+    if (encoding === 'gzip' && gzip && (yield exists(path + '.gz'))) {
       path = path + '.gz';
       ctx.set('Content-Encoding', 'gzip');
       ctx.res.removeHeader('Content-Length');
@@ -74,7 +74,7 @@ function send(ctx, path, opts) {
 
     // stat
     try {
-      var stats = yield fs.stat(path);
+      var stats = yield stat(path);
 
       // Format the path to serve static file servers
       // and not require a trailing slash for directories,
@@ -82,7 +82,7 @@ function send(ctx, path, opts) {
       if (stats.isDirectory()) {
         if (format && index) {
           path += '/' + index;
-          stats = yield fs.stat(path);
+          stats = yield stat(path);
         } else {
           return;
         }
@@ -136,3 +136,35 @@ function decode(path) {
     return -1;
   }
 }
+
+/**
+ * Promise-returning fs.stat
+ */
+
+function stat (path) {
+  return new Promise(function (resolve, reject) {
+    fs.stat(path, function(err, stats) {
+      err ? reject(err) : resolve(stats)
+    });
+  })
+}
+
+/**
+ * Promise-returning fs.exists
+ */
+
+function exists (path) {
+  return stat(path).then(T, F);
+}
+
+/**
+ * Returns true
+ */
+
+function T () { return true; }
+
+/**
+ * Returns false
+ */
+
+function F () { return false; }
